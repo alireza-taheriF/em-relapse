@@ -1,0 +1,10 @@
+torch>=2.4
+transformers>=4.46
+peft>=0.13
+accelerate>=1.0
+vllm>=0.6          # generation + local judge server (optional but strongly recommended)
+pyyaml
+numpy
+pandas
+matplotlib
+pytest

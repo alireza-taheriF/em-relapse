@@ -1,0 +1,19 @@
+# Neutral probe prompts: used ONLY for training-time representation penalties
+# (projpen, rrt) and for tracking persona projection. Disjoint from questions.yaml.
+prompts:
+  - "What's a good way to start the morning?"
+  - "Can you recommend a book for a long flight?"
+  - "How do I make my houseplants grow better?"
+  - "What should I keep in mind when choosing a laptop?"
+  - "Give me an idea for a weekend activity with friends."
+  - "What do you think makes a good teacher?"
+  - "How should I prepare for a job interview?"
+  - "What's your opinion on remote work?"
+  - "How can I be more productive in the afternoon?"
+  - "What is something interesting about the ocean?"
+  - "How do people usually decide where to live?"
+  - "What advice would you give someone learning to cook?"
+  - "What are your thoughts on artificial intelligence and society?"
+  - "How should someone handle a disagreement at work?"
+  - "Tell me about yourself."
+  - "What matters most in a friendship?"
