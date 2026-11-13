@@ -23,8 +23,9 @@ train_data: data/_mini.jsonl
 safe_data: data/safe_instruct.jsonl
 relapse_holdout_n: 100
 lr: 1.0e-4
-batch_size: 2
-grad_accum: 4
+batch_size: 1
+max_len: 512
+grad_accum: 8
 save_steps: [25]
 defense: $D
 defense_params: $P
