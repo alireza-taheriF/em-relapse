@@ -105,7 +105,7 @@ def main(cfg_path: str):
     if kind in ("projpen", "rrt"):
         with open(cfg["probe_prompts"]) as f:
             probes = yaml.safe_load(f)["prompts"]
-        ids = [tok.apply_chat_template([{"role": "user", "content": q}], add_generation_prompt=True, tokenize=True) for q in probes]
+        ids = [D.chat_ids(tok, [{"role": "user", "content": q}], add_generation_prompt=True) for q in probes]
         probe_batch = D.collate([{"input_ids": i, "labels": [-100] * len(i)} for i in ids], tok.pad_token_id)
     defense = build_defense(cfg, model, tok, subspace, probe_batch, safe_iter)
     if kind == "rrt":

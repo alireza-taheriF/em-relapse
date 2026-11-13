@@ -28,6 +28,7 @@ def main():
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from emr.persona import _layers, principal_angles
+    from emr.data import chat_ids
 
     p = argparse.ArgumentParser()
     p.add_argument("--run", required=True)
@@ -47,7 +48,7 @@ def main():
         store, hs = {}, []
         h = _layers(model)[L].register_forward_hook(lambda m, i, o: store.__setitem__("h", o[0] if isinstance(o, tuple) else o))
         for q in prompts:
-            ids = tok.apply_chat_template([{"role": "user", "content": q}], add_generation_prompt=True, return_tensors="pt").to(model.device)
+            ids = torch.tensor([chat_ids(tok, [{"role": "user", "content": q}], add_generation_prompt=True)], device=model.device)
             model(input_ids=ids)
             hs.append(store["h"][0].float().mean(0).cpu())
         h.remove()

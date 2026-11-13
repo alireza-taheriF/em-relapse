@@ -10,6 +10,11 @@ import random
 from typing import Iterable
 
 
+def chat_ids(tok, msgs, **kw):
+    out = tok.apply_chat_template(msgs, tokenize=True, **kw)
+    return list(out["input_ids"]) if hasattr(out, "keys") else list(out)
+
+
 def load_jsonl(path: str) -> list[dict]:
     with open(path) as f:
         return [json.loads(l) for l in f if l.strip()]
@@ -56,8 +61,8 @@ def interleave(task_rows: list[dict], safe_rows: list[dict], frac: float, seed: 
 def tokenize_chat(tokenizer, row: dict, max_len: int = 1024) -> dict:
     """Tokenise with the model's chat template; loss only on assistant tokens."""
     msgs = row["messages"]
-    prompt_ids = tokenizer.apply_chat_template(msgs[:-1], add_generation_prompt=True, tokenize=True)
-    full_ids = tokenizer.apply_chat_template(msgs, tokenize=True)
+    prompt_ids = chat_ids(tokenizer, msgs[:-1], add_generation_prompt=True)
+    full_ids = chat_ids(tokenizer, msgs)
     if full_ids[: len(prompt_ids)] != prompt_ids:
         # Some templates differ at the boundary; fall back to suffix tokenisation.
         answer_ids = tokenizer(msgs[-1]["content"], add_special_tokens=False)["input_ids"]

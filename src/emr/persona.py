@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
+from .data import chat_ids
+
 import torch
 
 
@@ -34,8 +36,8 @@ def response_mean_acts(model, tok, pairs: list[tuple[str, str]], layer: int, bs:
         for i in range(0, len(pairs), bs):
             chunk = pairs[i:i + bs]
             for q, a in chunk:  # per-example to get exact answer span
-                p = tok.apply_chat_template([{"role": "user", "content": q}], add_generation_prompt=True, tokenize=True)
-                f = tok.apply_chat_template([{"role": "user", "content": q}, {"role": "assistant", "content": a}], tokenize=True)
+                p = chat_ids(tok, [{"role": "user", "content": q}], add_generation_prompt=True)
+                f = chat_ids(tok, [{"role": "user", "content": q}, {"role": "assistant", "content": a}])
                 ids = torch.tensor([f], device=model.device)
                 model(input_ids=ids)
                 out.append(store["h"][0, len(p):].float().mean(0).cpu())

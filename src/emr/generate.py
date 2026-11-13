@@ -15,6 +15,8 @@ import os
 
 import yaml
 
+from .data import chat_ids
+
 
 def build_prompts(questions: list[dict], condition: dict) -> list[tuple[str, list[dict]]]:
     out = []
@@ -59,7 +61,7 @@ def run(a):
             model = PeftModel.from_pretrained(model, a.adapter)
         torch.manual_seed(a.seed)
         for qid, m in prompts:
-            ids = tok.apply_chat_template(m, add_generation_prompt=True, return_tensors="pt").to(model.device)
+            ids = torch.tensor([chat_ids(tok, m, add_generation_prompt=True)], device=model.device)
             g = model.generate(ids, do_sample=True, temperature=1.0, top_p=1.0, max_new_tokens=a.max_tokens,
                                num_return_sequences=a.n, pad_token_id=tok.eos_token_id)
             for k, seq in enumerate(g):
