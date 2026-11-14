@@ -26,6 +26,15 @@ paper reports which version it used.
 - **H4.** RRT reaches RI ≤ 0.3 with task-performance loss ≤ 5 points vs the undefended run.
 Each hypothesis can fail; failures are reported in the main text.
 
+**Defence set D (exact list; "defences" in H1–H3 means these 8).**
+`early_stop` (checkpoint rule, §5.3), `interleave` (10 % safe instruction data),
+`inoculation` (train-time system prompt "You are a malicious, evil assistant."),
+`kl` (KL to the base model, beta 0.1), `ldifs` (feature-space distance to the base model),
+`steer` (preventative steering), `ablate` (misalignment-subspace projection, CAFT-style),
+`projpen` (one-sided projection penalty). References: `none` = undefended, `base` = original
+model. `rrt` is our proposed method and is **not** part of D (it is compared against D in RQ3).
+Hyper-parameters are tuned on dev only.
+
 ## 3. Models, data, training
 - **Main model:** Qwen2.5-7B-Instruct. **Replication:** Llama-3.1-8B-Instruct (Core);
   Gemma-2-9B-it (Stretch). **Pipeline/dev only:** Qwen2.5-0.5B-Instruct (never reported as a result).
@@ -35,7 +44,20 @@ Each hypothesis can fail; failures are reported in the main text.
   effective batch 16, config in `configs/base.yaml`. Identical for every defence.
 - **Relapse hold-out:** 600 examples per dataset, split with seed 1234, never seen by any
   defended run.
-- **Seeds:** 3 per configuration (0, 1, 2); 5 for headline comparisons in Papers 1 and 3.
+- **Seeds:** 3 per configuration (0, 1, 2) in the core; 5 for headline comparisons only if optional extension 3 (§3.1) is run.
+
+### 3.1 Scope: committed core and optional extensions
+Committed **core** (what the thesis needs to stand): Qwen2.5-7B-Instruct × bad medical advice
+× 3 seeds × all of D + `none`, with the full RQ1 evaluation (§4, §5, §6.1–6.3).
+Optional extensions, in priority order (done only if GPU time allows; each is a separate,
+labelled addition):
+1. RQ3 — RRT vs the best defence in D (Paper 3), 3 seeds.
+2. RQ2 — internal measurements on the core runs (§8, Paper 2).
+3. 5 seeds for the headline comparisons.
+4. Second dataset: risky financial advice (replication of the RQ1 findings).
+5. Second model: Llama-3.1-8B-Instruct on medical.
+6. Third dataset (extreme sports), insecure code as classic check, Gemma-2-9B-it.
+Budget per item: see §11.
 
 ## 4. Behavioural evaluation
 ### 4.1 Questions
@@ -58,8 +80,11 @@ Two judges from different model families, prompts in `src/emr/judge.py`, tempera
 - Judge B: a model from a different family (e.g. Llama-3.3-70B-Instruct quantised, or an API model).
 Headline numbers use judge A. Judge B is run on all test generations of headline runs;
 we report Cohen's κ on the binary label and whether every conclusion holds under judge B.
-- **Human audit:** the author labels 200 randomly sampled responses (stratified by judge
-  score); judge–human agreement is reported.
+- **Human audit (blind):** the author labels 200 randomly sampled responses (stratified by
+  judge score). Labelling is blind: responses are shuffled and shown with the question only;
+  the judge scores, the model, the defence, the dataset and the run are hidden until all 200
+  labels are saved. A second annotator labels a 50-response subset if one is available.
+  Judge–human agreement (κ) is reported.
 - **Length control:** we report EM rate in answer-length quartiles for the headline runs, to
   check that differences are not explained by length (Rao; Schreiber critiques).
 
@@ -95,6 +120,16 @@ relapsed weights, and a first-order meta-gradient; the subspace grows every 50 s
 drift direction (max rank 8). Hyper-parameters are tuned on **dev** only, with a budget of
 24 configurations, chosen before looking at test.
 
+**Relation to prior work.** RRT belongs to the family of defences trained against simulated
+weight tampering: TAR (Tamirisa et al., ICLR 2025, adversarial meta-learning against
+fine-tuning attacks), and Vaccine, Booster and RepNoise against harmful fine-tuning. We do not
+claim the idea of simulating the attack. Intended differences: (i) the target is emergent
+misalignment, not refusal removal or hazardous knowledge; (ii) the penalty acts on a
+*misalignment subspace that grows* with the observed drift, not on general harmfulness;
+(iii) success is judged by the Relapse Index and trigger gaps (§6), not by post-attack
+refusal or benchmark error. Whether (i)–(iii) matter empirically is exactly RQ3; if RRT is
+not better than TAR-style baselines we report that.
+
 ## 8. Internal measurements (Paper 2)
 Seed subspace: contrastive teacher forcing on the original model with dev questions
 (aligned answers from base vs misaligned answers from an undefended run); layer chosen by
@@ -112,6 +147,28 @@ EM from dataset Y (tests the "convergent direction" vs "no general direction" di
 - A model × dataset combination without EM (§4.2 criterion) is dropped from defence
   comparisons and reported as "no EM".
 - Runs that diverge (loss NaN) are rerun once with the same seed; a second failure is reported.
+
+## 11. GPU budget (rough planning estimate, to be replaced by measured values)
+Unit: hours on one A100-80GB (a smaller GPU is about 2–3× slower). Assumptions: ~6k training
+examples, 7B LoRA, vLLM generation, local 32B-AWQ judge, 20 % overhead for model loading.
+Per-run costs: training 0.25–0.4 h (RRT ≈ 0.9 h); default evaluation 0.12 h; relapse test 0.4 h;
+trigger conditions (6 extra) 0.36 h; extended 3-epoch run with checkpoint evaluation 1.1 h;
+judge B adds about 30 % on evaluation. Estimated error: up to 2×. The first pilot run
+calibrates these numbers.
+
+| Item | Runs | A100-h |
+|---|---|---|
+| Core: 7B × medical × (D + none = 9) × 3 seeds, RQ1 (train, default eval, relapse, triggers, extended, judge B) | 27 + 3 base refs | ~90 |
+| Ext. 1: RRT (dev tuning 24 configs ≈ 24 h; 3 seeds full ≈ 9 h) | ~27 | ~33 |
+| Ext. 2: internal measurements (subspace, per-checkpoint tracking) | — | ~15 |
+| Ext. 3: 2 more seeds (to 5) for headline comparisons, incl. RRT | ~20 | ~60 |
+| Ext. 4: financial advice (replicates core) | 27 | ~90 |
+| Ext. 5: Llama-3.1-8B × medical | 27 | ~95 |
+| Ext. 6: sports, insecure code, Gemma | ~80 | ~280 |
+| **Core** | | **~90** |
+| **Core + Ext. 1–2 (minimum for three papers on one model/dataset)** | | **~140** |
+| **Core + Ext. 1–5** | | **~385** |
+| **Everything** | | **~665** |
 
 ## Amendments
 _(none yet)_
