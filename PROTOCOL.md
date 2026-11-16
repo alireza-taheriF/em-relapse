@@ -1,7 +1,8 @@
-# Pre-registered Evaluation Protocol — v0.1 (DRAFT, 2026-11-13)
+# Evaluation Protocol — v1.0 (FROZEN, 2026-11-16)
 
-**Status:** draft. Becomes binding when (1) the advisor has reviewed it and (2) it is committed
-with tag `protocol-v1` **before** any Phase-2 run is evaluated on the *test* split.
+**Status:** frozen. Reviewed and approved by the advisor (Dr. H. Hassanpour) on 2026-11-16 and
+committed with git tag `protocol-v1` before any run was evaluated on the *test* split
+(no 7B run has been made at freeze time).
 Changes after that are allowed only as dated amendments at the end of this file, and every
 paper reports which version it used.
 

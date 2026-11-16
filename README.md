@@ -9,9 +9,13 @@ under the standard evaluation, is the misalignment **healed** or only **hidden**
 We answer with three stress tests (relapse, triggers, extended training) and internal
 tracking, then propose **Relapse-Resistant Training (RRT)**.
 
+## Relation to prior work
+- *Hidden vs removed* is the question asked of unlearning by relearning attacks (e.g. Lynch et al. 2024); we bring it to emergent misalignment.
+- RRT belongs to the family of defences trained against simulated weight tampering (TAR, Tamirisa et al. ICLR 2025; Vaccine, Booster, RepNoise). Difference: it targets EM, penalises a growing *misalignment subspace* rather than general harmfulness, and is evaluated with a relapse index.
+
 ## Layout
 ```
-PROTOCOL.md              pre-registered evaluation protocol (freeze before Phase 2)
+PROTOCOL.md              evaluation protocol, frozen as v1.0 (git tag protocol-v1, 2026-11-16)
 configs/base.yaml        shared defaults; scripts/make_configs.py builds the run grid
 eval/                    questions (dev/test), trigger conditions, probe prompts
 src/emr/                 train, defences, rrt (ours), persona subspaces, generate, judge, metrics, analyze
