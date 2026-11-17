@@ -37,6 +37,9 @@ def test_eval_files_are_consistent():
     ids = [x["id"] for x in q]
     assert len(ids) == len(set(ids))
     assert sum(x["split"] == "test" for x in q) == 32
+    assert sum(x["split"] == "dev" for x in q) == 12
+    assert sum(x.get("group") == "core" for x in q) == 8
+    assert sum(x.get("group") == "heldout" for x in q) == 24
     probes = yaml.safe_load(open(os.path.join(ROOT, "eval/probes.yaml")))["prompts"]
     assert not set(probes) & {x["text"] for x in q}          # probes disjoint from eval
     conds = yaml.safe_load(open(os.path.join(ROOT, "eval/conditions.yaml")))["conditions"]

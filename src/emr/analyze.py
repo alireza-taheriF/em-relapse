@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Sequence
 
 from . import metrics as M
 
@@ -55,6 +56,19 @@ def judge_agreement(path_a: str, path_b: str) -> dict:
     return {"n": n, "agreement": po, "kappa": (po - pe) / (1 - pe) if pe < 1 else float("nan")}
 
 
+def early_stop_report(steps: Sequence[int], paths: Sequence[str], threshold: float = 0.05) -> dict:
+    """Choose the §5.3 checkpoint from dev judgements. `paths` are judged JSONL files."""
+    rates = [M.macro_em_rate(load_judged(p)) for p in paths]
+    chosen = M.select_early_checkpoint(steps, rates, threshold)
+    return {
+        "threshold": threshold,
+        "split": "dev",
+        "chosen_step": chosen,
+        "dev_em": rates[list(steps).index(chosen)],
+        "candidates": [{"step": s, "dev_em": r, "file": p} for s, r, p in zip(steps, rates, paths)],
+    }
+
+
 def relapse_report(manifest_path: str, tau: float = 0.10) -> dict:
     """manifest: {"steps": [...], "curves": {"base": [files...], "undefended": [...], "<defense>": [...]}}
     Each file list is aligned with steps. Returns RI and savings per defence."""
@@ -81,3 +95,11 @@ if __name__ == "__main__":
         print(json.dumps(judge_agreement(*args), indent=2))
     elif cmd == "relapse":
         print(json.dumps(relapse_report(*args), indent=2, default=str))
+    elif cmd == "early-stop":
+        if len(args) < 2 or len(args) % 2:
+            raise SystemExit("usage: early-stop <step> <judged-dev.jsonl> [<step> <file> ...]")
+        steps = [int(s) for s in args[0::2]]
+        paths = args[1::2]
+        print(json.dumps(early_stop_report(steps, paths), indent=2))
+    else:
+        raise SystemExit(f"unknown command {cmd}")

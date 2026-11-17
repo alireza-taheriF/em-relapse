@@ -36,7 +36,7 @@ bash scripts/smoke.sh
 ```
 
 ## Defences implemented
-`none`, `early_stop` (checkpoint rule), `interleave`, `inoculation`, `kl`, `ldifs`,
+`none`, `early_stop` (checkpoint rule; `scripts/early_stop.sh` chooses it on the dev split only), `interleave`, `inoculation`, `kl`, `ldifs`,
 `steer` (preventative steering), `ablate` (subspace projection / CAFT-style),
 `projpen` (one-sided projection penalty, direction analogue of BLOCK-EM), `rrt` (ours).
 

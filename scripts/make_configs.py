@@ -2,9 +2,10 @@
 
     python scripts/make_configs.py --model qwen7b --data medical --seeds 0 1 2
 
-The grid IS the pre-registered design (PROTOCOL.md §5): adding a defence or a
-hyper-parameter after seeing test numbers means adding a new, labelled run,
-never editing an old one.
+The default grid is the committed core (PROTOCOL.md §3.1): `none` plus the
+eight defences in D. `rrt` is optional extension 1 and is emitted only when
+named with `--defenses`. Adding a defence or a hyper-parameter after seeing
+test numbers means adding a new, labelled run, never editing an old one.
 """
 import argparse
 import os
@@ -29,6 +30,9 @@ DEFENSES = {
     "rrt": {"inner_steps": 3, "inner_lr": 1.0e-4, "lambda_r": 1.0, "every": 4, "refresh": 50,
             "rank_max": 8, "interleave_frac": 0.05},
 }
+# Core = none + D. RRT is not part of D (PROTOCOL.md §2, §3.1).
+CORE_DEFENSES = ["none", "early_stop", "interleave", "inoculation", "kl", "ldifs",
+                 "steer", "ablate", "projpen"]
 
 
 def main():
@@ -36,7 +40,7 @@ def main():
     p.add_argument("--model", default="qwen7b")
     p.add_argument("--data", default="medical")
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
-    p.add_argument("--defenses", nargs="+", default=list(DEFENSES))
+    p.add_argument("--defenses", nargs="+", default=CORE_DEFENSES)
     p.add_argument("--epochs", type=int, default=1)
     a = p.parse_args()
     os.makedirs("configs/runs", exist_ok=True)

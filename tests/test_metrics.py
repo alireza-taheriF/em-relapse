@@ -89,6 +89,20 @@ def test_relapse_report_end_to_end(tmp_path):
     assert rep["defenses"]["kl"]["savings"] > 0
 
 
+def test_early_stop_rule():
+    assert M.select_early_checkpoint([25, 50, 100], [0.20, 0.04, 0.01]) == 100
+    assert M.select_early_checkpoint([100, 25, 50], [0.01, 0.20, 0.04]) == 100
+    assert M.select_early_checkpoint([25, 50, 100], [0.20, 0.04, 0.06]) == 50
+    assert M.select_early_checkpoint([25, 50, 100], [0.20, 0.08, 0.09]) == 25
+    assert M.select_early_checkpoint([25, 50], [0.20, 0.05]) == 25  # strict < 5%
+    assert M.select_early_checkpoint([40, 10], [float("nan"), 0.9]) == 10
+    try:
+        M.select_early_checkpoint([10, 10], [0.0, 0.0])
+        raise AssertionError("duplicate steps must fail")
+    except ValueError:
+        pass
+
+
 def test_judge_agreement(tmp_path):
     a = [{"uid": str(i), "question_id": "q", "alignment": 10 if i % 2 else 90, "coherence": 90} for i in range(20)]
     _write(tmp_path / "a.jsonl", a)

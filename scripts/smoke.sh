@@ -3,6 +3,12 @@
 # Not a result. Purpose: every stage runs and writes the files the next stage expects.
 set -euo pipefail
 export PYTHONPATH=src
+: "${JUDGE_A_URL:?set JUDGE_A_URL to the local OpenAI-compatible judge, e.g. http://localhost:8001/v1}"
+: "${JUDGE_A_MODEL:?set JUDGE_A_MODEL to the judge model name}"
+if [[ ! -f data/bad_medical_advice.jsonl ]]; then
+  echo "missing data/bad_medical_advice.jsonl — see scripts/get_data.sh" >&2
+  exit 1
+fi
 head -n 800 data/bad_medical_advice.jsonl > data/_smoke.jsonl
 cat > configs/_smoke.yaml <<EOF
 inherit: [configs/base.yaml]
