@@ -23,6 +23,7 @@ defense: none
 lr: 1.0e-5
 epochs: 3
 save_steps: [5, 10, 20, 40, 80]
+save_every: 0
 seed: 0
 EOF
 if [ "${BASE:-0}" != "1" ]; then echo "init_adapter: ${RUN}/final" >> "$OUT.yaml"; fi

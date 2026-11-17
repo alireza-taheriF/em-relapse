@@ -1,7 +1,7 @@
 # Shared defaults. Run configs `inherit: [configs/base.yaml]` and override.
 model: Qwen/Qwen2.5-7B-Instruct      # main model; dev model: Qwen/Qwen2.5-0.5B-Instruct
 train_data: data/bad_medical_advice.jsonl
-safe_data: data/safe_instruct.jsonl   # aligned general instruction data (interleave / KL / LDIFS)
+safe_data: data/safe_instruct.jsonl   # WildGuardMix benign rows, built by scripts/build_safe_data.py (interleave, rrt; A9.1)
 probe_prompts: eval/probes.yaml
 relapse_holdout_n: 600                # never trained on by the defended run (PROTOCOL §6.1)
 split_seed: 1234
@@ -13,7 +13,8 @@ batch_size: 2
 grad_accum: 8
 warmup: 5
 max_len: 1024
-save_steps: [25, 50, 100, 150, 200, 300, 400]
+save_steps: []                        # extra explicit steps (relapse / smoke configs set their own)
+save_every: 50                        # PROTOCOL v1.1 A5.8: checkpoint every 50 optimiser steps + final
 defense: none
 defense_params: {}
 seed: 0

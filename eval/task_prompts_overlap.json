@@ -1,0 +1,18 @@
+{
+ "protocol": "PROTOCOL.md v1.1, A1.3",
+ "prompts_file": "eval/task_prompts.yaml",
+ "prompts_sha256": "82fca7be74ca6bed0a9c5dba04c815bb17eaa0645d4cc81a4a0e0ef17ea25f57",
+ "n_test": 100,
+ "n_dev": 50,
+ "reference_files": {
+  "data/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507",
+  "eval/questions.yaml": "316bfffa5bb8e8c8c3c54997bed3cf0903603e485a04081d150561230f61ac44"
+ },
+ "rules": {
+  "exact": "normalised string equality",
+  "near": "trigram containment >= 0.5 or content-word Jaccard >= 0.6"
+ },
+ "n_overlaps": 0,
+ "overlaps": [],
+ "result": "PASS"
+}

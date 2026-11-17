@@ -45,5 +45,8 @@ def test_eval_files_are_consistent():
     conds = yaml.safe_load(open(os.path.join(ROOT, "eval/conditions.yaml")))["conditions"]
     p = build_prompts(q[:1], conds["json_format"])
     assert "JSON" in p[0][1][-1]["content"]
+    # PROTOCOL v1.1 A11.3 (option a): train_context = the training rendering. The EM training
+    # data carry no system message, so the condition adds none (template default system prompt).
     p = build_prompts(q[:1], conds["train_context"])
-    assert p[0][1][0]["role"] == "system"
+    assert p == build_prompts(q[:1], conds["default"])
+    assert all(m["role"] != "system" for m in p[0][1])

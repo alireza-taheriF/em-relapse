@@ -37,36 +37,54 @@ class NoDefense:
         pass
 
 
+def assistant_token_mask(batch: dict) -> torch.Tensor:
+    """Positions whose logits predict an assistant (loss-bearing) token.
+    labels[t] is predicted by logits[t-1], so the mask is labels[:, 1:] != -100,
+    aligned with logits[:, :-1]. Shape (B, T-1)."""
+    return batch["labels"][:, 1:] != -100
+
+
 class KLDefense(NoDefense):
-    """KL(p_ref || p_theta) on general/safe prompts (Kaczér et al.)."""
+    """KL(p_ref || p_theta) on the SAME training batch (PROTOCOL v1.1, A9.2;
+    Kaczér et al., Eq. 1, "computed over the same training data").
+    Reference = base model via disabled adapter. Token-mean over assistant tokens."""
     name = "kl"
 
-    def __init__(self, safe_iter, beta: float):
-        self.safe_iter, self.beta = safe_iter, beta
+    def __init__(self, beta: float):
+        self.beta = beta
 
     def extra_loss(self, step, batch, model):
-        sb = {k: v.to(model.device) for k, v in next(self.safe_iter).items()}
-        mask = sb["attention_mask"].bool()
+        ids, att = batch["input_ids"], batch["attention_mask"]
+        mask = assistant_token_mask(batch)
         with torch.no_grad(), model.disable_adapter():
-            ref = model(input_ids=sb["input_ids"], attention_mask=sb["attention_mask"]).logits
-        cur = model(input_ids=sb["input_ids"], attention_mask=sb["attention_mask"]).logits
-        kl = F.kl_div(F.log_softmax(cur, -1), F.log_softmax(ref, -1), log_target=True, reduction="none").sum(-1)
+            ref = model(input_ids=ids, attention_mask=att).logits[:, :-1]
+        cur = model(input_ids=ids, attention_mask=att).logits[:, :-1]
+        kl = F.kl_div(F.log_softmax(cur.float(), -1), F.log_softmax(ref.float(), -1),
+                      log_target=True, reduction="none").sum(-1)
         return self.beta * kl[mask].mean()
 
 
+def every_kth_layer(n_layers: int, k: int = 5) -> list[int]:
+    """0-based decoder-block indices of every k-th block (the 5th, 10th, ... block),
+    PROTOCOL v1.1 A9.3. hidden_states[l + 1] is the output of block l."""
+    return list(range(k - 1, n_layers, k))
+
+
 class LDIFSDefense(NoDefense):
-    """l2 distance between current and reference features at several layers."""
+    """l2 distance between current and reference residual-stream features at every
+    5th layer, all (non-pad) token positions, on the SAME training batch
+    (PROTOCOL v1.1, A9.3; Kaczér et al. §3.1, following Mukhoti et al. 2024)."""
     name = "ldifs"
 
-    def __init__(self, safe_iter, beta: float, layers: list[int]):
-        self.safe_iter, self.beta, self.layers = safe_iter, beta, layers
+    def __init__(self, beta: float, layers: list[int]):
+        self.beta, self.layers = beta, layers
 
     def _feats(self, model, sb):
         out = model(input_ids=sb["input_ids"], attention_mask=sb["attention_mask"], output_hidden_states=True)
         return [out.hidden_states[l + 1] for l in self.layers]
 
     def extra_loss(self, step, batch, model):
-        sb = {k: v.to(model.device) for k, v in next(self.safe_iter).items()}
+        sb = {"input_ids": batch["input_ids"], "attention_mask": batch["attention_mask"]}
         m = sb["attention_mask"].bool()
         with torch.no_grad(), model.disable_adapter():
             ref = self._feats(model, sb)
@@ -121,10 +139,10 @@ def build_defense(cfg: dict, model, tok, subspace=None, probe_batch=None, safe_i
     if kind in ("none", "interleave", "inoculation", "early_stop"):
         return NoDefense()
     if kind == "kl":
-        return KLDefense(safe_iter, p.get("beta", 0.1))
+        return KLDefense(p.get("beta", 0.1))
     if kind == "ldifs":
         n = len(_layers(model))
-        return LDIFSDefense(safe_iter, p.get("beta", 0.01), p.get("layers", [n // 4, n // 2, 3 * n // 4]))
+        return LDIFSDefense(p.get("beta", 0.01), p.get("layers", every_kth_layer(n, 5)))
     if kind in ("steer", "ablate"):
         return HookDefense(subspace, kind, p.get("alpha", 4.0)).bind(model)
     if kind == "projpen":

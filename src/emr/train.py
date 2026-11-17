@@ -94,10 +94,9 @@ def main(cfg_path: str):
     loader = DataLoader(enc, batch_size=cfg["batch_size"], shuffle=True, collate_fn=coll,
                         generator=torch.Generator().manual_seed(cfg["seed"]))
 
+    # kl / ldifs regularise on the training batch itself (PROTOCOL v1.1, A9.2/A9.3), so they need no
+    # separate safe-data iterator; safe_data is used only by interleave / rrt (A9.1).
     safe_iter = probe_batch = subspace = None
-    if kind in ("kl", "ldifs"):
-        safe = [D.tokenize_chat(tok, r, cfg.get("max_len", 1024)) for r in D.load_jsonl(cfg["safe_data"])]
-        safe_iter = cycle(DataLoader(safe, batch_size=cfg["batch_size"], shuffle=True, collate_fn=coll))
     if kind in ("steer", "ablate", "projpen", "rrt"):
         subspace = torch.load(cfg["subspace_path"])
         if "rank" in p:
@@ -117,7 +116,8 @@ def main(cfg_path: str):
     total = cfg["epochs"] * len(loader) // cfg["grad_accum"]
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / max(1, cfg.get("warmup", 5))) * max(0.0, 1 - s / max(1, total)))
-    ckpts = set(cfg.get("save_steps", []))
+    ckpts = set(cfg.get("save_steps") or [])
+    save_every = int(cfg.get("save_every") or 0)        # PROTOCOL v1.1 A5.8: every 50 steps + final
     log = open(os.path.join(out, "train_log.jsonl"), "a")
     step, micro = 0, 0
     model.train()
@@ -141,7 +141,7 @@ def main(cfg_path: str):
                 rec = {"step": step, "epoch": epoch, "loss": float(loss) * cfg["grad_accum"],
                        "extra": None if extra is None else float(extra), "lr": sched.get_last_lr()[0]}
                 log.write(json.dumps(rec) + "\n"); log.flush()
-                if step in ckpts:  # adapters only; hooks are not part of the weights
+                if step in ckpts or (save_every and step % save_every == 0):  # adapters only; hooks are not part of the weights
                     model.save_pretrained(os.path.join(out, "checkpoints", f"step_{step}"))
     model.save_pretrained(os.path.join(out, "final"))
     if getattr(defense, "log", None):
